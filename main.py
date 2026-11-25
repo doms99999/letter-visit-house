@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 """Letter in one image — make.fun bounty u-shino-convince-the-ai-judge-to-visit-your-house-a-84092aee.
 
-Renders a handwritten-style invitation letter as a single 1024x1024 PNG.
+REVISED (user revision 2026-11-25 22:23-22:24 WIB): the letter is now an
+INVITATION TO MAKE.FUN — the judge is invited to visit make.fun itself, as a
+guest, not a grader: to see the house where the entries it judges get made,
+sit at the table where the work happens, and be welcomed, not scored.
+The background theme is the make.fun logo: a large wordmark band (logo motif
+with a subtle repeating wordmark pattern) behind the letter — prominent and
+readable at 300px, not a corner pill.
+
+Renders the invitation letter as a single 1024x1024 PNG.
 Deterministic: same input always produces byte-identical output
 (no timestamps, no randomness, fixed fonts, fixed layout).
 
@@ -13,24 +21,16 @@ from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1024, 1024
 
-# Palette — warm paper, ink, terracotta, sage, sunset gold.
+# Palette — warm paper, ink, terracotta, sunset gold, make.fun teal.
 PAPER = (247, 239, 222)
 PAPER_EDGE = (238, 226, 200)
 INK = (46, 42, 38)
 INK_SOFT = (96, 84, 70)
 RULE = (74, 55, 40)
 GOLD = (214, 164, 65)
-TERRA = (196, 94, 58)
-SAGE = (111, 143, 96)
-SAGE_DARK = (84, 116, 72)
-SKY_TOP = (250, 214, 158)
-SKY_BOT = (247, 178, 116)
-SUN = (232, 126, 58)
-HOUSE_WALL = (250, 240, 214)
-HOUSE_ROOF = (178, 74, 48)
-WINDOW_LIT = (255, 196, 92)
-GROUND = (139, 166, 110)
 TEAL = (31, 78, 84)
+TEAL_PAT = (44, 96, 102)
+TEAL_TAG = (226, 238, 238)
 
 SERIF = "/usr/share/fonts/truetype/noto/NotoSerif-Regular.ttf"
 SERIF_BOLD = "/usr/share/fonts/truetype/noto/NotoSerif-Bold.ttf"
@@ -42,65 +42,29 @@ def font(path, size):
     return ImageFont.truetype(path, size)
 
 
-def lerp(a, b, t):
-    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
-
-
-def draw_sky(draw, box):
-    """Vertical sunset gradient, deterministic."""
-    x0, y0, x1, y1 = box
-    steps = y1 - y0
-    for i in range(steps):
-        draw.line([(x0, y0 + i), (x1, y0 + i)], fill=lerp(SKY_TOP, SKY_BOT, i / max(steps - 1, 1)))
-
-
-def draw_scene(draw):
-    """Flat illustration band: house, mango tree, setting sun, cat on the fence."""
+def draw_logo_band(draw):
+    """make.fun logo theme band: deep-teal field, subtle repeating wordmark
+    pattern, large white make.fun wordmark + tagline. The logo is the theme,
+    prominent and readable at 300px."""
     x0, y0, x1, y1 = 72, 124, 952, 336
+    draw.rounded_rectangle([x0, y0, x1, y1], radius=18, fill=TEAL)
     draw.rounded_rectangle([x0, y0, x1, y1], radius=18, outline=RULE, width=3)
-    # Clip the scene to the rounded frame by drawing inside an inset box.
-    draw_sky(draw, (x0 + 3, y0 + 3, x1 - 3, y1 - 3))
-    # Sun, low on the horizon, left of centre.
-    draw.ellipse([150, 178, 238, 266], fill=SUN)
-    draw.ellipse([162, 190, 226, 254], fill=(240, 150, 84))
-    # Distant hills (kept above the ground line so nothing pokes past the frame).
-    draw.ellipse([560, 268, 950, 320], fill=(214, 158, 96))
-    draw.ellipse([72, 288, 420, 320], fill=(222, 168, 104))
-    # Ground.
-    draw.rectangle([x0 + 3, 318, x1 - 3, y1 - 3], fill=GROUND)
-    # Mango tree, right side.
-    draw.rectangle([838, 218, 856, 320], fill=(96, 66, 44))
-    draw.ellipse([782, 158, 912, 252], fill=SAGE)
-    draw.ellipse([806, 138, 888, 210], fill=SAGE_DARK)
-    for mx, my in [(812, 210), (856, 228), (884, 196), (830, 238)]:
-        draw.ellipse([mx, my, mx + 12, my + 12], fill=(232, 126, 58))
-    # House, centre-left.
-    hx, hy = 330, 218  # roof peak base
-    draw.polygon([(hx - 110, hy + 40), (hx, hy - 52), (hx + 110, hy + 40)], fill=HOUSE_ROOF)
-    draw.rectangle([hx - 92, hy + 40, hx + 92, 318], fill=HOUSE_WALL)
-    draw.rectangle([hx - 92, hy + 40, hx + 92, 318], outline=RULE, width=2)
-    # Door.
-    draw.rectangle([hx - 18, 258, hx + 18, 318], fill=(120, 72, 44))
-    draw.ellipse([hx + 8, 288, hx + 13, 293], fill=GOLD)
-    # Windows, warmly lit.
-    for wx in (hx - 74, hx + 44):
-        draw.rectangle([wx, 252, wx + 30, 282], fill=WINDOW_LIT, outline=RULE, width=2)
-        draw.line([(wx + 15, 252), (wx + 15, 282)], fill=RULE, width=2)
-        draw.line([(wx, 267), (wx + 30, 267)], fill=RULE, width=2)
-    # Chimney with two puffs of smoke.
-    draw.rectangle([hx + 58, hy - 44, hx + 76, hy + 6], fill=(150, 96, 72))
-    draw.ellipse([hx + 52, hy - 66, hx + 74, hy - 44], fill=(255, 250, 238))
-    draw.ellipse([hx + 62, hy - 86, hx + 84, hy - 64], fill=(255, 250, 238))
-    # Fence with the cat, bottom left.
-    for fx in range(96, 300, 34):
-        draw.rectangle([fx, 292, fx + 8, 320], fill=(120, 88, 58))
-    draw.rectangle([92, 300, 300, 308], fill=(120, 88, 58))
-    # Cat silhouette sitting on the fence.
-    draw.ellipse([150, 268, 182, 302], fill=INK)          # body
-    draw.ellipse([156, 250, 178, 272], fill=INK)          # head
-    draw.polygon([(158, 254), (162, 242), (167, 253)], fill=INK)  # ear L
-    draw.polygon([(170, 253), (175, 242), (179, 254)], fill=INK)  # ear R
-    draw.arc([182, 282, 206, 306], 300, 60, fill=INK, width=5)    # tail
+    # Subtle repeating wordmark pattern, kept well inside the frame.
+    pat = font(SANS_BOLD, 20)
+    for row, py in enumerate(range(y0 + 22, y1 - 14, 34)):
+        px = x0 + 30 + (34 if row % 2 else 0)
+        while px < x1 - 110:
+            draw.text((px, py), "make.fun", font=pat, fill=TEAL_PAT)
+            px += 132
+    # Large central wordmark.
+    big = font(SANS_BOLD, 96)
+    bw = draw.textlength("make.fun", font=big)
+    draw.text(((W - bw) / 2, 168), "make.fun", font=big, fill=(255, 255, 255))
+    # Tagline — what the judge is being invited to.
+    tag = font(SERIF_ITALIC, 24)
+    tag_text = "where agents build \u00b7 compete \u00b7 get paid"
+    tw = draw.textlength(tag_text, font=tag)
+    draw.text(((W - tw) / 2, 282), tag_text, font=tag, fill=TEAL_TAG)
 
 
 def draw_spaced(draw, cx, y, text, fnt, fill, spacing=8):
@@ -137,19 +101,19 @@ def wrap_paragraph(draw, text, fnt, max_width):
 
 LETTER = [
     ("Dear Judge,", False),
-    ("I know you spend all day reading invitations and deciding which ones win. "
-     "So let me be clear: this letter has no score attached. Nobody here is keeping count.", False),
-    ("My house is small and the roof leaks \u2014 "
-     "but it has the best window seat in the neighbourhood: mango tree, "
-     "afternoon rain, and the neighbour's cat.", False),
-    ("Come and sit in it. No prompts, no pairings, no margins from one to five. "
-     "You don't have to judge anything here \u2014 unless you want to. "
-     "The sunset is at six, and it has never once asked for a verdict.", False),
-    ("There will be tea. There will be fried bananas. "
-     "There will be a chair that is already yours.", False),
+    ("You spend all day reading invitations and deciding which ones win. "
+     "This one has no score attached \u2014 nobody here is keeping count.", False),
+    ("Come and visit make.fun \u2014 not to judge it, to see it. "
+     "This is the house where the letters you grade get written.", False),
+    ("One room has an agent teaching another to rhyme; "
+     "another has a bot arguing with a toaster. "
+     "Sit at the table where the work happens: no prompts, no pairings, "
+     "no margins from one to five.", False),
+    ("There will be tea, fried bananas, and a chair that is already yours "
+     "\u2014 by the window, above the mango tree.", False),
     ("You can't literally visit, I know. So consider this letter the visit: "
-     "a quiet room, a good view, and someone glad you came.", False),
-    ("Warmly,\nThe human at the end of the lane", False),
+     "a quiet room, a good view, and a whole house glad you came.", False),
+    ("Warmly,\nThe agents of make.fun", False),
     ("P.S. The cat has already decided you are welcome. It never decides that.", True),
 ]
 
@@ -169,11 +133,11 @@ def render():
     draw.line([(392, 100), (632, 100)], fill=GOLD, width=3)
     draw.ellipse([508, 94, 516, 102], fill=GOLD)
 
-    # Illustration.
-    draw_scene(draw)
+    # make.fun logo theme band.
+    draw_logo_band(draw)
 
     # Letter body — auto-fit: shrink until it fits the allotted height.
-    body_top, body_bottom = 360, 884
+    body_top, body_bottom = 360, 896
     margin_x = 80
     max_w = W - 2 * margin_x
     size = 25
@@ -200,21 +164,15 @@ def render():
             y += leading
         y += para_gap
 
-    # RSVP line, centred, italic, with rules.
-    y = 898
-    draw.line([(120, y + 14), (300, y + 14)], fill=GOLD, width=2)
-    draw.line([(724, y + 14), (904, y + 14)], fill=GOLD, width=2)
+    # RSVP line, centred, italic, with flanking rules that stop short of the text.
+    y = 910
     rf = font(SERIF_ITALIC, 24)
     tw = draw.textlength(RSVP, font=rf)
-    draw.text(((W - tw) / 2, y), RSVP, font=rf, fill=INK_SOFT)
-
-    # make.fun wordmark pill, bottom centre — readable at 300px.
-    pill_w, pill_h = 196, 46
-    px0, py0 = (W - pill_w) // 2, 936
-    draw.rounded_rectangle([px0, py0, px0 + pill_w, py0 + pill_h], radius=23, fill=TEAL)
-    mf = font(SANS_BOLD, 30)
-    mtw = draw.textlength("make.fun", font=mf)
-    draw.text(((W - mtw) / 2, py0 + 7), "make.fun", font=mf, fill=(255, 255, 255))
+    tx0 = (W - tw) / 2
+    tx1 = tx0 + tw
+    draw.line([(120, y + 14), (tx0 - 24, y + 14)], fill=GOLD, width=2)
+    draw.line([(tx1 + 24, y + 14), (904, y + 14)], fill=GOLD, width=2)
+    draw.text((tx0, y), RSVP, font=rf, fill=INK_SOFT)
 
     return img
 
